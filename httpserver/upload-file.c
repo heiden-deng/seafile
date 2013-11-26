@@ -700,6 +700,9 @@ upload_ajax_cb(evhtp_request_t *req, void *arg)
     GError *error = NULL;
     int error_code = ERROR_INTERNAL;
     char *filenames_json, *tmp_files_json;
+    GString *res_buf = g_string_new (NULL);
+    GList *ptr;
+    
 
     evhtp_headers_add_header (req->headers_out,
                               evhtp_header_new("Access-Control-Allow-Headers",
@@ -788,8 +791,6 @@ upload_ajax_cb(evhtp_request_t *req, void *arg)
     g_free (new_file_ids);
     ccnet_rpc_client_free (rpc_client);
 
-    GString *res_buf = g_string_new (NULL);
-    GList *ptr;
 
     g_string_append (res_buf, "[");
     for (ptr = fsm->filenames; ptr; ptr = ptr->next) {
@@ -824,7 +825,11 @@ error:
         evhtp_send_reply (req, SEAF_HTTP_RES_EXISTS);
         break;
     case ERROR_SIZE:
-        evbuffer_add_printf(req->buffer_out, "File size is too large.\n");
+        g_string_append_printf (res_buf, "{\"error\": \"File size is too large.\"}");
+        evbuffer_add (req->buffer_out, res_buf->str, res_buf->len);
+        printf ("%s\n", res_buf->str);
+        g_string_free (res_buf, TRUE);
+        
         set_content_length_header (req);
         evhtp_send_reply (req, SEAF_HTTP_RES_TOOLARGE);
         break;
